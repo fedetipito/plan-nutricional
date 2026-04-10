@@ -167,7 +167,7 @@ const VERDURAS_DB=[
 
 // ─── ESTADO ───────────────────────────────────────────────────────────────────
 const S={tab:"semana",openComida:null,openMeal:null,sec:"proteinas",selected:{},copied:false,
-  peso:73,altura:175,edad:32,sexo:"M",activ:"moderado",obj:"perdida",sortMode:"default"};
+  peso:73,altura:175,edad:32,sexo:"M",activ:"moderado",obj:"perdida",sortMode:"manual"};
 
 // ─── ORDEN MANUAL (localStorage) ──────────────────────────────────────────────
 function getOrder(sec){const k="foodOrder_"+sec;const s=localStorage.getItem(k);if(s)try{return JSON.parse(s)}catch(e){}return null}
@@ -307,7 +307,7 @@ function renderAlimentos(){
 
   // Sort buttons
   const sb=(id,l)=>`<button onclick="setSort('${id}')" style="background:${S.sortMode===id?"#0f172a":"transparent"};color:${S.sortMode===id?C.text:C.muted};border:${S.sortMode===id?"1px solid "+C.border:"1px solid transparent"};border-radius:5px;padding:4px 10px;font-size:9px">${l}</button>`;
-  h+=`<div style="display:flex;gap:4px;margin-bottom:8px;align-items:center"><span style="font-size:8px;color:${C.dim};letter-spacing:1px;margin-right:4px">ORDEN:</span>${sb("default","Original")}${sb("prot","Proteína ↓")}${sb("kcal","Kcal ↑")}${sb("manual","✏️ Mi orden")}</div>`;
+  h+=`<div style="display:flex;gap:4px;margin-bottom:8px;align-items:center"><span style="font-size:8px;color:${C.dim};letter-spacing:1px;margin-right:4px">ORDEN:</span>${sb("manual","✏️ Mi orden")}${sb("default","Original")}${sb("prot","Proteína ↓")}${sb("kcal","Kcal ↑")}</div>`;
   if(isManual&&!getOrder(S.sec)){saveOrder(S.sec,items.map(it=>it.n))}
 
   const gcols=isManual?"20px 22px 1fr 34px 34px 34px 44px":"22px 1fr 34px 34px 34px 44px";
