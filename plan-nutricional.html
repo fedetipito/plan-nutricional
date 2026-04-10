@@ -307,7 +307,9 @@ function renderAlimentos(){
 
   // Sort buttons
   const sb=(id,l)=>`<button onclick="setSort('${id}')" style="background:${S.sortMode===id?"#0f172a":"transparent"};color:${S.sortMode===id?C.text:C.muted};border:${S.sortMode===id?"1px solid "+C.border:"1px solid transparent"};border-radius:5px;padding:4px 10px;font-size:9px">${l}</button>`;
-  h+=`<div style="display:flex;gap:4px;margin-bottom:8px;align-items:center"><span style="font-size:8px;color:${C.dim};letter-spacing:1px;margin-right:4px">ORDEN:</span>${sb("manual","✏️ Mi orden")}${sb("default","Original")}${sb("prot","Proteína ↓")}${sb("kcal","Kcal ↑")}</div>`;
+  const syncBtns=isManual?`<span style="margin-left:auto;display:flex;gap:4px"><button onclick="exportOrder()" style="background:transparent;color:${C.dim};border:1px solid ${C.border};border-radius:5px;padding:4px 8px;font-size:9px">📤 Exportar</button><button onclick="importOrder()" style="background:transparent;color:${C.dim};border:1px solid ${C.border};border-radius:5px;padding:4px 8px;font-size:9px">📥 Importar</button></span>`:"";
+  const syncMsg=S._syncMsg==="exportOk"?`<span style="font-size:9px;color:#4ade80;margin-left:6px">✓ Copiado al portapapeles</span>`:S._syncMsg==="importOk"?`<span style="font-size:9px;color:#4ade80;margin-left:6px">✓ Orden importado</span>`:"";
+  h+=`<div style="display:flex;gap:4px;margin-bottom:8px;align-items:center;flex-wrap:wrap"><span style="font-size:8px;color:${C.dim};letter-spacing:1px;margin-right:4px">ORDEN:</span>${sb("manual","✏️ Mi orden")}${sb("default","Original")}${sb("prot","Proteína ↓")}${sb("kcal","Kcal ↑")}${syncBtns}${syncMsg}</div>`;
   if(isManual&&!getOrder(S.sec)){saveOrder(S.sec,items.map(it=>it.n))}
 
   const gcols=isManual?"20px 22px 1fr 34px 34px 34px 44px":"22px 1fr 34px 34px 34px 44px";
@@ -320,7 +322,7 @@ function renderAlimentos(){
   items.forEach((it,idx)=>{
     const sel=S.selected[it.n];
     const dragH=isManual?`<span style="cursor:grab;color:${C.dim};font-size:13px;user-select:none;display:flex;align-items:center;justify-content:center">⠿</span>`:"";
-    const dragAttrs=isManual?`data-food="${esc(it.n)}" draggable="true" ondragstart="dStart(event,'${esc(it.n)}')" ondragover="dOver(event)" ondrop="dDrop(event,'${esc(it.n)}')" ondragend="dEnd()"`:`data-food="${esc(it.n)}"`;
+    const dragAttrs=isManual?`data-food="${esc(it.n)}" draggable="true" ondragstart="dStart(event,'${esc(it.n)}')" ondragover="dOver(event)" ondrop="dDrop(event,'${esc(it.n)}')" ondragend="dEnd()" ontouchstart="tStart(event,'${esc(it.n)}')"`:`data-food="${esc(it.n)}"`;
     h+=`<div ${dragAttrs} onclick="toggleFood('${esc(it.n)}')" style="display:grid;grid-template-columns:${gcols};padding:6px 0;border-bottom:1px solid #080d1a;opacity:${it.ok?1:0.4};align-items:center;cursor:${isManual?"grab":"pointer"};background:${sel?"rgba(74,222,128,0.08)":"transparent"};border-left:${sel?"2px solid #4ade80":"2px solid transparent"};transition:background 0.15s">
       ${dragH}<span style="font-size:11px;text-align:center;color:${sel?"#4ade80":"#334155"}">${sel?"✓":"○"}</span>
       <div style="display:flex;align-items:center;gap:5px">
@@ -408,12 +410,20 @@ window.clearSel=()=>{S.selected={};render()};
 window.copyList=()=>{const t=Object.keys(S.selected).join("\n");const ta=document.createElement("textarea");ta.value=t;ta.style.cssText="position:fixed;left:-9999px;top:0";document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);S.copied=true;render();setTimeout(()=>{S.copied=false;render()},2000)};
 window.updateCalc=(f,v)=>{S[f]=v;render()};
 window.setSort=m=>{S.sortMode=m;render()};
-// Drag and drop
-let _dragged=null;
+// Export/import order across devices
+window.exportOrder=()=>{const data={};["proteinas","frutas","verduras","carbos","grasas"].forEach(s=>{const o=getOrder(s);if(o)data[s]=o});const code=btoa(unescape(encodeURIComponent(JSON.stringify(data))));const ta=document.createElement("textarea");ta.value=code;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);S._syncMsg="exportOk";render();setTimeout(()=>{S._syncMsg=null;render()},2000)};
+window.importOrder=()=>{const code=prompt("Pegá el código de orden que exportaste en otro dispositivo:");if(!code||!code.trim())return;try{const data=JSON.parse(decodeURIComponent(escape(atob(code.trim()))));Object.entries(data).forEach(([s,o])=>saveOrder(s,o));S._syncMsg="importOk";render();setTimeout(()=>{S._syncMsg=null;render()},2000)}catch(e){alert("Código inválido. Asegurate de copiar el texto completo.")}};
+// Drag and drop (desktop + mobile touch)
+let _dragged=null,_touchY=0,_touchEl=null,_touchClone=null;
 window.dStart=(e,n)=>{_dragged=n;e.dataTransfer.effectAllowed="move";requestAnimationFrame(()=>{const el=document.querySelector(`[data-food="${CSS.escape(n)}"]`);if(el)el.classList.add("dragging")})};
 window.dOver=(e)=>{e.preventDefault();e.dataTransfer.dropEffect="move";const row=e.target.closest("[data-food]");document.querySelectorAll("[data-food]").forEach(r=>r.classList.remove("drag-over"));if(row&&row.dataset.food!==_dragged)row.classList.add("drag-over")};
 window.dDrop=(e,target)=>{e.preventDefault();document.querySelectorAll("[data-food]").forEach(r=>r.classList.remove("drag-over"));if(!_dragged||_dragged===target)return;const items=getSortedItems(S.sec);const order=items.map(i=>i.n);const fi=order.indexOf(_dragged),ti=order.indexOf(target);if(fi<0||ti<0)return;order.splice(fi,1);order.splice(ti,0,_dragged);saveOrder(S.sec,order);_dragged=null;render()};
 window.dEnd=()=>{_dragged=null;document.querySelectorAll(".dragging").forEach(r=>r.classList.remove("dragging"))};
+// Touch support for mobile
+function _tDrop(target){if(!_dragged||_dragged===target)return;const items=getSortedItems(S.sec);const order=items.map(i=>i.n);const fi=order.indexOf(_dragged),ti=order.indexOf(target);if(fi<0||ti<0)return;order.splice(fi,1);order.splice(ti,0,_dragged);saveOrder(S.sec,order);_dragged=null;render()}
+window.tStart=(e,n)=>{const t=e.touches[0];_dragged=n;_touchY=t.clientY;_touchEl=e.target.closest("[data-food]");if(_touchEl)_touchEl.classList.add("dragging");e.preventDefault()};
+document.addEventListener("touchmove",e=>{if(!_dragged)return;e.preventDefault();const t=e.touches[0];const el=document.elementFromPoint(t.clientX,t.clientY);const row=el?el.closest("[data-food]"):null;document.querySelectorAll("[data-food]").forEach(r=>r.classList.remove("drag-over"));if(row&&row.dataset.food!==_dragged)row.classList.add("drag-over")},{passive:false});
+document.addEventListener("touchend",e=>{if(!_dragged)return;document.querySelectorAll("[data-food]").forEach(r=>r.classList.remove("drag-over","dragging"));const t=e.changedTouches[0];const el=document.elementFromPoint(t.clientX,t.clientY);const row=el?el.closest("[data-food]"):null;if(row)_tDrop(row.dataset.food);_dragged=null;_touchEl=null});
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 render();
