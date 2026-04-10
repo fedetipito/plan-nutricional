@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plan Nutricional Modular</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#020617;font-family:'IBM Plex Mono',monospace;color:#e2e8f0}
+    input[type=range]{cursor:pointer;width:100%;accent-color:#2dd4bf}
+    ::-webkit-scrollbar{width:4px;height:4px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:#334155;border-radius:2px}
+    button{font-family:inherit;cursor:pointer}
+    .wrap{max-width:1060px;margin:0 auto;padding:16px 14px}
+    .card{background:#080d1a;border:1px solid #1e293b;border-radius:10px}
+    .row{display:flex;align-items:center;gap:10px}
+    .mono{font-family:'IBM Plex Mono',monospace}
+    .grid8{display:grid;grid-template-columns:72px repeat(7,1fr);gap:4px}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+// ─── COLORES ──────────────────────────────────────────────────────────────────
+const C={prot:"#2dd4bf",fat:"#fde047",carb:"#a78bfa",fruta:"#fb923c",verdura:"#4ade80",kcal:"#f1f5f9",bg:"#020617",card:"#080d1a",card2:"#0f172a",border:"#1e293b",dim:"#334155",dimmer:"#1e293b",muted:"#64748b",text:"#e2e8f0"};
+
+// ─── DATOS ────────────────────────────────────────────────────────────────────
+const DB={
+  "Pechuga de pollo (cocido)":{p:31,f:3.2,c:0,kcal:165,tipo:"prot",emoji:"🍗"},
+  "Camarones (cocidos)":{p:24,f:0.9,c:0.9,kcal:106,tipo:"prot",emoji:"🦐"},
+  "Salmón (cocido)":{p:26.3,f:5.5,c:0,kcal:156,tipo:"prot",emoji:"🐟"},
+  "Atún en agua (escurrido)":{p:25.5,f:0.5,c:0,kcal:109,tipo:"prot",emoji:"🐟"},
+  "Carne picada 10% (cocida)":{p:26,f:10,c:0,kcal:196,tipo:"prot",emoji:"🥩"},
+  "Lomo vacuno (cocido)":{p:29,f:7,c:0,kcal:185,tipo:"prot",emoji:"🥩"},
+  "Arroz blanco (cocido)":{p:2.7,f:0.3,c:28.2,kcal:130,tipo:"carb",emoji:"🍚"},
+  "Papa hervida":{p:2,f:0.1,c:17,kcal:77,tipo:"carb",emoji:"🥔"},
+  "Batata hervida":{p:1.6,f:0.1,c:20.1,kcal:86,tipo:"carb",emoji:"🍠"},
+  "Palta":{p:2,f:14.7,c:8.5,kcal:160,tipo:"fat",emoji:"🥑"},
+  "Frutillas":{p:0.7,f:0.3,c:7.7,kcal:33,tipo:"fruta",emoji:"🍓"},
+  "Naranja":{p:0.9,f:0.1,c:11.8,kcal:47,tipo:"fruta",emoji:"🍊"},
+  "Melón":{p:0.5,f:0.1,c:8.2,kcal:34,tipo:"fruta",emoji:"🍈"},
+  "Durazno":{p:0.9,f:0.3,c:9.5,kcal:39,tipo:"fruta",emoji:"🍑"},
+  "Manzana verde":{p:0.3,f:0.2,c:13.8,kcal:52,tipo:"fruta",emoji:"🍏"},
+  "Tomates cherry":{p:0.9,f:0.2,c:3.9,kcal:18,tipo:"verd",emoji:"🍅"},
+  "Zanahoria":{p:0.9,f:0.2,c:9.6,kcal:41,tipo:"verd",emoji:"🥕"},
+  "Espinaca":{p:2.9,f:0.4,c:3.6,kcal:23,tipo:"verd",emoji:"🥬"}
+};
+
+const VERDURAS=[{nombre:"Tomates cherry",g:100},{nombre:"Zanahoria",g:50},{nombre:"Espinaca",g:40}];
+
+const COMIDAS=[
+  {id:"C1",nombre:"Pollo + Arroz",emoji:"🍗🍚",tag:"pollo",nota:null,items:[{nombre:"Pechuga de pollo (cocido)",g:195},{nombre:"Arroz blanco (cocido)",g:233},{nombre:"Palta",g:94},{nombre:"Frutillas",g:150}]},
+  {id:"C2",nombre:"Pollo + Papa",emoji:"🍗🥔",tag:"pollo",nota:null,items:[{nombre:"Pechuga de pollo (cocido)",g:195},{nombre:"Papa hervida",g:367},{nombre:"Palta",g:94},{nombre:"Durazno",g:200}]},
+  {id:"C3",nombre:"Camarones + Arroz",emoji:"🦐🍚",tag:"camarones",nota:null,items:[{nombre:"Camarones (cocidos)",g:250},{nombre:"Arroz blanco (cocido)",g:228},{nombre:"Palta",g:120},{nombre:"Naranja",g:150}]},
+  {id:"C4",nombre:"Camarones + Batata",emoji:"🦐🍠",tag:"camarones",nota:null,items:[{nombre:"Camarones (cocidos)",g:250},{nombre:"Batata hervida",g:389},{nombre:"Palta",g:120},{nombre:"Manzana verde",g:100}]},
+  {id:"C5",nombre:"Carne Picada + Batata",emoji:"🥩🍠",tag:"carne",nota:"Carne picada 10% grasa — ya aporta su propia grasa, sin palta.",items:[{nombre:"Carne picada 10% (cocida)",g:231},{nombre:"Batata hervida",g:387},{nombre:"Melón",g:150}]},
+  {id:"C6",nombre:"Atún + Batata",emoji:"🐟🍠",tag:"atun",nota:null,items:[{nombre:"Atún en agua (escurrido)",g:235},{nombre:"Batata hervida",g:384},{nombre:"Palta",g:128},{nombre:"Frutillas",g:100}]},
+  {id:"C7",nombre:"Lomo + Arroz",emoji:"🥩🍚",tag:"lomo",nota:"Elegí corte magro: lomo o peceto. Evitá asado de tira.",items:[{nombre:"Lomo vacuno (cocido)",g:207},{nombre:"Arroz blanco (cocido)",g:240},{nombre:"Palta",g:37},{nombre:"Melón",g:200}]},
+  {id:"C8",nombre:"Salmón + Papa",emoji:"🐟🥔",tag:"salmon",nota:"Valores corregidos desde MyNetDiary: salmón cocido tiene ~5.5g grasa/100g (no 12g). Se agrega palta igual que los demás.",items:[{nombre:"Salmón (cocido)",g:228},{nombre:"Papa hervida",g:430},{nombre:"Palta",g:51},{nombre:"Frutillas",g:150}]}
+];
+
+const SEMANA=[
+  {dia:"Lunes",c1:"C2",c2:"C8"},{dia:"Martes",c1:"C2",c2:"C8"},
+  {dia:"Miércoles",c1:"C2",c2:"C5"},{dia:"Jueves",c1:"C2",c2:"C7"},
+  {dia:"Viernes",c1:"C2",c2:"C4"},{dia:"Sábado",c1:"C2",c2:"C6"},
+  {dia:"Domingo",c1:"C2",c2:"C5"}
+];
+
+const ALIMENTOS_DB={
+  proteinas:[
+    {n:"Pechuga de pollo",e:"🍗",p:31,f:3.2,c:0,kcal:165,ok:1,en:1,nota:"principal del plan"},
+    {n:"Pechuga de pavo",e:"🦃",p:29,f:1.6,c:0,kcal:135,ok:1,en:0,nota:"similar al pollo"},
+    {n:"Huevo entero",e:"🥚",p:13,f:11,c:0.7,kcal:155,ok:1,en:0,nota:"nutriente completo"},
+    {n:"Claras de huevo",e:"🥚",p:10.9,f:0.2,c:0.7,kcal:52,ok:1,en:0,nota:"sin grasa"},
+    {n:"Atún en agua",e:"🐟",p:25.5,f:0.5,c:0,kcal:109,ok:1,en:1,nota:"el más magro"},
+    {n:"Salmón",e:"🐟",p:26.3,f:5.5,c:0,kcal:156,ok:1,en:1,nota:"omega-3"},
+    {n:"Merluza",e:"🐠",p:22,f:1.5,c:0,kcal:105,ok:1,en:0,nota:"magra"},
+    {n:"Camarones",e:"🦐",p:24,f:0.9,c:0.9,kcal:106,ok:1,en:1,nota:"muy magros"},
+    {n:"Carne picada 10%",e:"🥩",p:26,f:10,c:0,kcal:196,ok:1,en:1,nota:"sin palta — ya tiene grasa"},
+    {n:"Lomo vacuno",e:"🥩",p:29,f:7,c:0,kcal:185,ok:1,en:1,nota:"corte magro"},
+    {n:"Cerdo magro (lomo)",e:"🥩",p:27,f:6,c:0,kcal:165,ok:1,en:0,nota:"corte magro"},
+    {n:"Yogur griego nat.",e:"🥛",p:10,f:0.4,c:3.6,kcal:59,ok:1,en:0,nota:"0% grasa"},
+    {n:"Cottage cheese",e:"🧀",p:11,f:4.3,c:3.4,kcal:98,ok:1,en:0,nota:"bajo en grasa"},
+    {n:"Leche descremada",e:"🥛",p:3.4,f:0.1,c:5,kcal:35,ok:1,en:0,nota:"caloría líquida"},
+    {n:"Lentejas cocidas",e:"🫘",p:9,f:0.4,c:20,kcal:116,ok:1,en:0,nota:"P + C · vegetal"},
+    {n:"Garbanzos cocidos",e:"🫘",p:8.9,f:2.6,c:27.4,kcal:164,ok:1,en:0,nota:"P + C · vegetal"},
+    {n:"Tofu firme",e:"🟨",p:8,f:4.8,c:2,kcal:76,ok:1,en:0,nota:"opción vegana"},
+    {n:"Edamame",e:"🫘",p:11,f:5,c:8.9,kcal:122,ok:1,en:0,nota:"snack proteico"},
+    {n:"Tempeh",e:"🟫",p:19,f:11,c:9,kcal:193,ok:1,en:0,nota:"fermentado vegano"},
+    {n:"Asado de tira",e:"🥩",p:24,f:20,c:0,kcal:280,ok:0,en:0,nota:"⚠ mucha grasa"},
+    {n:"Costillas de cerdo",e:"🥩",p:21,f:22,c:0,kcal:292,ok:0,en:0,nota:"⚠ mucha grasa"},
+    {n:"Hamburguesa 80/20",e:"🍔",p:17,f:20,c:0,kcal:250,ok:0,en:0,nota:"⚠ evitar"}
+  ],
+  carbos:[
+    {n:"Arroz blanco cocido",e:"🍚",p:2.7,f:0.3,c:28.2,kcal:130,ok:1,en:1,nota:"base del plan"},
+    {n:"Papa hervida",e:"🥔",p:2,f:0.1,c:17,kcal:77,ok:1,en:1,nota:"IG bajo hervida"},
+    {n:"Batata hervida",e:"🍠",p:1.6,f:0.1,c:20.1,kcal:86,ok:1,en:1,nota:"vitamina A"},
+    {n:"Avena (cruda)",e:"🌾",p:13,f:6.9,c:55,kcal:389,ok:1,en:0,nota:"desayuno · fibra"},
+    {n:"Quinoa cocida",e:"🌾",p:4.4,f:1.9,c:21.3,kcal:120,ok:1,en:0,nota:"proteína completa"},
+    {n:"Pan integral",e:"🍞",p:9,f:3,c:48,kcal:247,ok:1,en:0,nota:"moderado"},
+    {n:"Pasta integral coc.",e:"🍝",p:5,f:0.9,c:25,kcal:124,ok:1,en:0,nota:"moderado"},
+    {n:"Cebada cocida",e:"🌾",p:2.3,f:0.4,c:28.2,kcal:123,ok:1,en:0,nota:"fibra · bajo IG"},
+    {n:"Lentejas cocidas",e:"🫘",p:9,f:0.4,c:20,kcal:116,ok:1,en:0,nota:"también proteína"},
+    {n:"Garbanzos cocidos",e:"🫘",p:8.9,f:2.6,c:27.4,kcal:164,ok:1,en:0,nota:"también proteína"},
+    {n:"Porotos negros coc.",e:"🫘",p:8.9,f:0.5,c:23.7,kcal:132,ok:1,en:0,nota:"fibra alta"},
+    {n:"Maíz (choclo)",e:"🌽",p:3.2,f:1.2,c:21,kcal:96,ok:1,en:0,nota:"moderado"},
+    {n:"Arvejas cocidas",e:"🫛",p:5.4,f:0.4,c:14.5,kcal:81,ok:1,en:0,nota:"P + C"},
+    {n:"Zapallo anco coc.",e:"🎃",p:1,f:0.1,c:11.7,kcal:45,ok:1,en:0,nota:"bajo IG"},
+    {n:"Banana",e:"🍌",p:1.1,f:0.3,c:22.8,kcal:89,ok:1,en:0,nota:"post-entreno"},
+    {n:"Cereales (muesli)",e:"🥣",p:8,f:6,c:65,kcal:350,ok:0,en:0,nota:"⚠ revisar azúcar"}
+  ],
+  grasas:[
+    {n:"Palta",e:"🥑",p:2,f:14.7,c:8.5,kcal:160,ok:1,en:1,nota:"principal del plan"},
+    {n:"Aceite de oliva",e:"🫙",p:0,f:100,c:0,kcal:884,ok:1,en:0,nota:"14g/cda = 125kcal"},
+    {n:"Almendras",e:"🥜",p:21,f:49.9,c:21.6,kcal:579,ok:1,en:0,nota:"snack · pesar bien"},
+    {n:"Nueces",e:"🥜",p:15,f:65.2,c:13.7,kcal:654,ok:1,en:0,nota:"omega-3"},
+    {n:"Mantequilla maní",e:"🥜",p:25,f:50,c:20,kcal:588,ok:1,en:0,nota:"sin azúcar agregada"},
+    {n:"Semillas de chía",e:"🌱",p:16.5,f:30.7,c:42.1,kcal:486,ok:1,en:0,nota:"fibra · omega-3"},
+    {n:"Semillas de lino",e:"🌱",p:18.3,f:42.2,c:28.9,kcal:534,ok:1,en:0,nota:"omega-3"},
+    {n:"Semillas de cáñamo",e:"🌱",p:31.6,f:48.8,c:8.7,kcal:553,ok:1,en:0,nota:"proteína completa"},
+    {n:"Semillas de zapallo",e:"🌱",p:30.2,f:49.1,c:10.7,kcal:559,ok:1,en:0,nota:"zinc · magnesio"},
+    {n:"Salmón / Caballa",e:"🐟",p:25.4,f:12.4,c:0,kcal:206,ok:1,en:1,nota:"también proteína"},
+    {n:"Huevo entero",e:"🥚",p:13,f:11,c:0.7,kcal:155,ok:1,en:0,nota:"yema = grasa"},
+    {n:"Chocolate 70%+",e:"🍫",p:7.8,f:42.6,c:45.9,kcal:598,ok:1,en:0,nota:"porciones chicas"},
+    {n:"Queso duro",e:"🧀",p:25,f:33,c:1.3,kcal:402,ok:0,en:0,nota:"⚠ alta kcal/grasa"},
+    {n:"Yogur griego entero",e:"🥛",p:9,f:9,c:4,kcal:133,ok:0,en:0,nota:"⚠ monitorear grasa"}
+  ],
+  frutas:[
+    {n:"Sandía",e:"🍉",p:0.6,f:0.1,c:7.6,kcal:30,ok:1,en:0,nota:"la más liviana"},
+    {n:"Frutillas",e:"🍓",p:0.7,f:0.3,c:7.7,kcal:33,ok:1,en:1,nota:"★ en el plan"},
+    {n:"Melón",e:"🍈",p:0.5,f:0.1,c:8.2,kcal:34,ok:1,en:1,nota:"en el plan · refrescante"},
+    {n:"Durazno",e:"🍑",p:0.9,f:0.3,c:9.5,kcal:39,ok:1,en:1,nota:"en el plan"},
+    {n:"Ciruela",e:"🟣",p:0.7,f:0.3,c:11.4,kcal:46,ok:1,en:0,nota:"buena opción"},
+    {n:"Naranja",e:"🍊",p:0.9,f:0.1,c:11.8,kcal:47,ok:1,en:1,nota:"★ en el plan"},
+    {n:"Manzana verde",e:"🍏",p:0.3,f:0.2,c:13.8,kcal:52,ok:1,en:1,nota:"en el plan · saciante"},
+    {n:"Mandarina",e:"🍊",p:0.6,f:0.1,c:13.3,kcal:53,ok:1,en:0,nota:"fácil de comer"},
+    {n:"Arándanos",e:"🫐",p:0.7,f:0.3,c:14.5,kcal:57,ok:1,en:0,nota:"antioxidantes"},
+    {n:"Cerezas",e:"🍒",p:1.1,f:0.3,c:16,kcal:63,ok:1,en:0,nota:"antiinflamatorias"},
+    {n:"Pera",e:"🍐",p:0.4,f:0.1,c:15,kcal:57,ok:1,en:0,nota:"fibra alta"},
+    {n:"Kiwi",e:"🥝",p:1.1,f:0.5,c:14.7,kcal:61,ok:1,en:0,nota:"vitamina C"},
+    {n:"Mango",e:"🥭",p:0.8,f:0.4,c:15,kcal:60,ok:1,en:0,nota:"moderado"},
+    {n:"Uvas",e:"🍇",p:0.6,f:0.2,c:18.1,kcal:69,ok:0,en:0,nota:"⚠ IG alto"},
+    {n:"Banana",e:"🍌",p:1.1,f:0.3,c:22.8,kcal:89,ok:0,en:0,nota:"⚠ alta en carbs"}
+  ]
+};
+
+const VERDURAS_DB=[
+  {n:"Espinaca",e:"🥬",p:2.9,f:0.4,c:3.6,kcal:23,ok:1,en:1,nota:"en el plan"},
+  {n:"Tomates cherry",e:"🍅",p:0.9,f:0.2,c:3.9,kcal:18,ok:1,en:1,nota:"en el plan"},
+  {n:"Zanahoria",e:"🥕",p:0.9,f:0.2,c:9.6,kcal:41,ok:1,en:1,nota:"en el plan"},
+  {n:"Lechuga",e:"🥗",p:1.4,f:0.2,c:2.9,kcal:15,ok:1,en:0,nota:"volumen máximo"},
+  {n:"Pepino",e:"🥒",p:0.7,f:0.1,c:3.6,kcal:16,ok:1,en:0,nota:"hidratante"},
+  {n:"Apio",e:"🌿",p:0.7,f:0.1,c:3,kcal:14,ok:1,en:0,nota:"casi 0 kcal"},
+  {n:"Rúcula",e:"🥗",p:2.6,f:0.7,c:3.7,kcal:25,ok:1,en:0,nota:"fibra · sabor"},
+  {n:"Brócoli",e:"🥦",p:2.8,f:0.4,c:7,kcal:34,ok:1,en:0,nota:"fibra · vitamina C"},
+  {n:"Coliflor",e:"🤍",p:1.9,f:0.3,c:5,kcal:25,ok:1,en:0,nota:"bajo IG"},
+  {n:"Zucchini/zapallito",e:"🫑",p:1.2,f:0.3,c:3.1,kcal:17,ok:1,en:0,nota:"muy bajo kcal"},
+  {n:"Pimiento",e:"🫑",p:1,f:0.3,c:6,kcal:31,ok:1,en:0,nota:"vitamina C"},
+  {n:"Cebolla",e:"🧅",p:1.1,f:0.1,c:9.3,kcal:40,ok:1,en:0,nota:"sabor"},
+  {n:"Ajo",e:"🧄",p:6.4,f:0.5,c:33.1,kcal:149,ok:1,en:0,nota:"condimento · poco"},
+  {n:"Hongos/champignon",e:"🍄",p:3.1,f:0.3,c:3.3,kcal:22,ok:1,en:0,nota:"textura · bajo kcal"}
+];
+
+// ─── ESTADO ───────────────────────────────────────────────────────────────────
+const S={tab:"semana",openComida:null,openMeal:null,sec:"proteinas",selected:{},copied:false,
+  peso:73,altura:175,edad:32,sexo:"M",activ:"moderado",obj:"perdida"};
+
+// ─── UTILIDADES ───────────────────────────────────────────────────────────────
+function calc(items){let p=0,f=0,c=0,k=0;items.forEach(i=>{const d=DB[i.nombre];if(!d)return;const r=i.g/100;p+=d.p*r;f+=d.f*r;c+=d.c*r;k+=d.kcal*r});return{p:+p.toFixed(1),f:+f.toFixed(1),c:+c.toFixed(1),kcal:Math.round(k)}}
+function calcTDEE(p,a,e,s,ac){const b=s==="M"?10*p+6.25*a-5*e+5:10*p+6.25*a-5*e-161;const m={sedentario:1.2,ligero:1.375,moderado:1.55,activo:1.725,muyActivo:1.9};return Math.round(b*(m[ac]||1.55))}
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;")}
+const today=(()=>{const d=["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];return d[new Date().getDay()]})();
+
+// ─── RENDER: HEADER ───────────────────────────────────────────────────────────
+function renderHeader(){
+  const tabs=[["comidas","🍽 Comidas"],["semana","📅 Semana"],["alimentos","📋 Alimentos"],["calculadora","🧮 Calculadora"]];
+  return `<div style="text-align:center;margin-bottom:16px">
+    <div style="font-size:8px;letter-spacing:4px;color:${C.dimmer};margin-bottom:3px">FAT LOSS PROTOCOL</div>
+    <h1 style="font-size:18px;font-weight:900;color:${C.text}">Plan Nutricional Modular</h1>
+    <div style="display:flex;justify-content:center;gap:16px;margin-top:8px;font-size:9px">
+      <span style="color:${C.prot}">● PROTEÍNA</span><span style="color:${C.fat}">● GRASA</span>
+      <span style="color:${C.carb}">● CARBOS</span><span style="color:${C.verdura}">● VOLUMEN</span>
+    </div></div>
+    <div style="display:flex;gap:4px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px">
+    ${tabs.map(([id,l])=>`<button onclick="setTab('${id}')" style="background:${S.tab===id?C.card2:"transparent"};color:${S.tab===id?C.text:C.muted};border:${S.tab===id?"1px solid "+C.border:"1px solid transparent"};border-radius:7px;padding:7px 12px;font-size:10px;font-weight:${S.tab===id?700:400};white-space:nowrap;flex-shrink:0">${l}</button>`).join("")}
+    </div>`;
+}
+
+// ─── RENDER: COMIDAS ──────────────────────────────────────────────────────────
+function renderComidas(){
+  const vM=calc(VERDURAS);
+  let h=`<p style="font-size:10px;color:${C.muted};margin-bottom:16px;line-height:1.7">
+    8 comidas modulares. Cada una: ~825 kcal · ~20g grasa · ~70g prot.<br>
+    Combiná dos cualesquiera → ~1,650 kcal · ~40g grasa en el día.<br>
+    No repitas la misma proteína en almuerzo y cena.</p>`;
+  COMIDAS.forEach(com=>{
+    const m=calc(com.items),isOpen=S.openComida===com.id;
+    const dotC=t=>t==="prot"?C.prot:t==="fat"?C.fat:t==="fruta"?C.fruta:C.carb;
+    h+=`<div style="background:${C.card};border:1px solid ${isOpen?"#2dd4bf33":C.dimmer};border-radius:10px;margin-bottom:8px;overflow:hidden">
+      <div onclick="toggleComida('${com.id}')" style="padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">${com.emoji}</span>
+        <div style="flex:1"><div style="font-size:13px;font-weight:700;color:${C.text}">${com.nombre}</div><div style="font-size:9px;color:${C.dim};letter-spacing:1px">${com.id}</div></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${pill("P",m.p,C.prot)}${pill("F",m.f,C.fat)}${pill("C",m.c,C.carb)}${pill("KCAL",m.kcal,C.kcal,"")}
+          <div style="font-size:14px;color:${C.dim};margin-left:4px">${isOpen?"▲":"▼"}</div>
+        </div></div>`;
+    if(isOpen){
+      h+=`<div style="border-top:1px solid ${C.border}">`;
+      if(com.nota) h+=`<div style="margin:10px 14px 0;background:#1a1005;border:1px solid #92400e44;border-radius:6px;padding:6px 10px;font-size:10px;color:#fcd34d">⚠ ${com.nota}</div>`;
+      h+=`<div style="padding:10px 14px">
+        <div style="display:grid;grid-template-columns:1fr 44px 32px 32px 32px 40px;font-size:8px;letter-spacing:1px;color:${C.dim};padding-bottom:6px;border-bottom:1px solid ${C.border};margin-bottom:4px">
+          <span>ALIMENTO</span><span style="text-align:right">CANT</span><span style="text-align:right;color:${C.prot}">P</span><span style="text-align:right;color:${C.fat}">F</span><span style="text-align:right;color:${C.carb}">C</span><span style="text-align:right;color:${C.kcal}">KCAL</span></div>`;
+      com.items.forEach(it=>{const d=DB[it.nombre];if(!d)return;const r=it.g/100;
+        h+=`<div style="display:grid;grid-template-columns:1fr 44px 32px 32px 32px 40px;padding:5px 0;border-bottom:1px solid #0a1020;align-items:center">
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:6px;height:6px;border-radius:50%;background:${dotC(d.tipo)};flex-shrink:0"></div><span style="font-size:11px;color:${C.text}">${d.emoji} ${it.nombre}</span></div>
+          <span style="text-align:right;font-size:11px;color:${C.muted};font-family:monospace">${it.g}g</span>
+          <span style="text-align:right;font-size:11px;color:${C.prot};font-family:monospace">${+(d.p*r).toFixed(1)}</span>
+          <span style="text-align:right;font-size:11px;color:${C.fat};font-family:monospace">${+(d.f*r).toFixed(1)}</span>
+          <span style="text-align:right;font-size:11px;color:${C.carb};font-family:monospace">${+(d.c*r).toFixed(1)}</span>
+          <span style="text-align:right;font-size:11px;color:${C.kcal};font-family:monospace">${Math.round(d.kcal*r)}</span></div>`;
+      });
+      h+=`<div style="font-size:8px;color:#166534;letter-spacing:1px;margin:10px 0 4px;display:flex;align-items:center;gap:6px"><div style="flex:1;height:1px;background:#14532d"></div>VERDURAS — VOLUMEN SIN CALORÍAS<div style="flex:1;height:1px;background:#14532d"></div></div>`;
+      VERDURAS.forEach(v=>{h+=`<div style="display:grid;grid-template-columns:1fr 44px 32px 32px 32px 40px;padding:4px 0;border-bottom:1px solid #0a1020;align-items:center;opacity:0.7"><div style="display:flex;align-items:center;gap:6px"><div style="width:6px;height:6px;border-radius:50%;background:${C.verdura};flex-shrink:0"></div><span style="font-size:11px;color:${C.verdura}">${DB[v.nombre]?.emoji} ${v.nombre}</span></div><span style="text-align:right;font-size:11px;color:${C.muted};font-family:monospace">${v.g}g</span><span style="text-align:right;font-size:10px;color:#166534;font-family:monospace">—</span><span style="text-align:right;font-size:10px;color:#166534;font-family:monospace">—</span><span style="text-align:right;font-size:10px;color:#166534;font-family:monospace">—</span><span style="text-align:right;font-size:10px;color:#166534;font-family:monospace">≈0</span></div>`});
+      h+=`<div style="margin-top:10px;display:flex;justify-content:space-between;padding:8px 0;border-top:2px solid ${C.border}"><div style="display:flex;gap:14px"><span style="font-size:12px;color:${C.prot};font-family:monospace;font-weight:700">${m.p}g P</span><span style="font-size:12px;color:${C.fat};font-family:monospace;font-weight:700">${m.f}g F</span><span style="font-size:12px;color:${C.carb};font-family:monospace;font-weight:700">${m.c}g C</span><span style="font-size:12px;color:${C.kcal};font-family:monospace;font-weight:700">${m.kcal} kcal</span></div><span style="font-size:9px;color:#166534">+${vM.kcal} kcal verduras</span></div></div></div>`;
+    }
+    h+=`</div>`;
+  });
+  return h;
+}
+
+function pill(l,v,c,u="g"){return `<div style="text-align:center"><div style="font-size:7px;color:${C.muted};letter-spacing:1px">${l}</div><div style="font-size:12px;font-weight:900;color:${c};font-family:monospace">${v}${u}</div></div>`}
+
+// ─── RENDER: SEMANA ───────────────────────────────────────────────────────────
+function renderSemana(){
+  const DEFROST={pollo:"🍗 Pollo",camarones:"🦐 Camarones",carne:"🥩 Carne picada",lomo:"🥩 Lomo",salmon:"🐟 Salmón"};
+  const getPrep=i=>{const n=SEMANA[(i+1)%7];const t=[COMIDAS.find(c=>c.id===n.c1).tag,COMIDAS.find(c=>c.id===n.c2).tag];return[...new Set(t.filter(x=>DEFROST[x]))].map(x=>DEFROST[x])};
+
+  function mealCell(com,m,key,isT){
+    const isOpen=S.openMeal===key;
+    let h=`<div onclick="toggleMeal('${esc(key)}')" style="padding:10px 8px;cursor:pointer;border-radius:8px;background:${isOpen?"rgba(15,23,42,0.8)":isT?"#0a1628":"transparent"};border:${isT?"1px solid #2dd4bf22":"1px solid transparent"};transition:background 0.15s;min-width:0">
+      <div style="font-size:22px;margin-bottom:4px">${com.emoji}</div>
+      <div style="font-size:11px;font-weight:700;color:${C.text};line-height:1.3;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${com.nombre}</div>
+      <div style="font-size:9px;font-family:monospace;color:${C.muted}">${m.kcal} kcal</div>`;
+    if(isOpen){
+      h+=`<div style="margin-top:8px;padding-top:6px;border-top:1px solid ${C.border}">`;
+      if(com.nota) h+=`<div style="font-size:9px;color:#fcd34d;margin-bottom:4px;line-height:1.4">⚠ ${com.nota}</div>`;
+      com.items.forEach(it=>{const d=DB[it.nombre];if(!d)return;h+=`<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:9px;border-bottom:1px solid #080d1a"><span style="color:${C.text}">${d.emoji} ${it.nombre}</span><span style="font-family:monospace;color:${C.muted}">${it.g}g</span></div>`});
+      h+=`<div style="font-size:8px;color:#166534;margin-top:4px;line-height:1.4">+ verduras (espinaca · tomate · zanahoria)</div>
+        <div style="display:flex;gap:6px;margin-top:4px;font-size:8px;font-family:monospace"><span style="color:${C.prot}">${m.p}P</span><span style="color:${C.fat}">${m.f}F</span><span style="color:${C.carb}">${m.c}C</span></div></div>`;
+    }
+    return h+`</div>`;
+  }
+
+  let h=`<div style="font-size:10px;color:${C.muted};margin-bottom:14px;line-height:1.7">Semana fija — todas las semanas son iguales. Tocá una comida para ver el detalle.</div>
+    <div style="overflow-x:auto"><div style="min-width:700px">`;
+  // Header días
+  h+=`<div class="grid8" style="margin-bottom:2px"><div></div>`;
+  SEMANA.forEach(({dia})=>{const isT=dia===today;h+=`<div style="text-align:center;padding:8px 4px;background:${isT?"#0c2a2a":"transparent"};border:${isT?"1px solid #2dd4bf44":"1px solid transparent"};border-radius:8px"><div style="font-size:11px;font-weight:900;color:${isT?"#2dd4bf":C.text}">${dia.slice(0,3).toUpperCase()}</div>${isT?'<div style="font-size:7px;color:#2dd4bf;letter-spacing:1px;margin-top:1px">HOY</div>':""}</div>`});
+  h+=`</div>`;
+  // Almuerzo
+  h+=`<div class="grid8" style="margin-bottom:4px;background:${C.card};border-radius:10px;padding:4px"><div style="display:flex;align-items:center;justify-content:center;font-size:8px;letter-spacing:2px;color:${C.dim};font-weight:700">ALMUERZO</div>`;
+  SEMANA.forEach(({dia,c1})=>{const com=COMIDAS.find(c=>c.id===c1);h+=mealCell(com,calc(com.items),dia+"-alm",dia===today)});
+  h+=`</div>`;
+  // Cena
+  h+=`<div class="grid8" style="margin-bottom:4px;background:${C.card};border-radius:10px;padding:4px"><div style="display:flex;align-items:center;justify-content:center;font-size:8px;letter-spacing:2px;color:${C.dim};font-weight:700">CENA</div>`;
+  SEMANA.forEach(({dia,c2})=>{const com=COMIDAS.find(c=>c.id===c2);h+=mealCell(com,calc(com.items),dia+"-cena",dia===today)});
+  h+=`</div>`;
+  // Prep
+  h+=`<div class="grid8"><div style="display:flex;align-items:center;justify-content:center;font-size:8px;letter-spacing:2px;color:${C.dim}">❄️ PREP</div>`;
+  SEMANA.forEach(({dia},i)=>{const p=getPrep(i);const isT=dia===today;h+=`<div style="font-size:9px;color:${isT?"#7dd3fc":"#475569"};padding:6px 8px;line-height:1.5;text-align:center">${p.length?p.map(x=>`<div>${x}</div>`).join(""):`<span style="color:${C.dimmer}">—</span>`}</div>`});
+  h+=`</div></div></div>`;
+  return h;
+}
+
+// ─── RENDER: ALIMENTOS ────────────────────────────────────────────────────────
+function renderAlimentos(){
+  const secs=[["proteinas","🍗 Proteínas"],["carbos","🍚 Carbos"],["grasas","🥑 Grasas"],["frutas","🍓 Frutas"],["verduras","🥦 Verduras"]];
+  const items=S.sec==="verduras"?VERDURAS_DB:ALIMENTOS_DB[S.sec]||[];
+  const colorC=S.sec==="frutas"?"#fb923c":S.sec==="verduras"?C.verdura:C.carb;
+  const colorF=C.fat;
+  const selNames=Object.keys(S.selected);
+
+  let h=`<div style="background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;padding:12px 14px;font-size:10px;color:#7dd3fc;margin-bottom:10px;line-height:1.9">
+    Estos alimentos son el <strong>backbone</strong> de la dieta. Apuntá a que el 80% de tus calorías vengan de acá.<br>
+    Los marcados <strong style="color:${C.prot}">EN PLAN</strong> ya están en tus menús semanales.</div>`;
+
+  // Tabs
+  h+=`<div style="display:flex;gap:5px;margin-bottom:16px;flex-wrap:wrap">`;
+  secs.forEach(([id,l])=>{h+=`<button onclick="setSec('${id}')" style="background:${S.sec===id?C.card2:"transparent"};color:${S.sec===id?C.text:C.muted};border:${S.sec===id?"1px solid "+C.border:"1px solid transparent"};border-radius:7px;padding:6px 12px;font-size:10px;font-weight:${S.sec===id?700:400}">${l}</button>`});
+  h+=`</div>`;
+
+  // Table
+  h+=`<div style="background:${C.card};border-radius:10px;padding:12px 14px">
+    <div style="display:grid;grid-template-columns:22px 1fr 34px 34px 34px 44px;font-size:8px;letter-spacing:1px;color:${C.dim};padding:6px 0;border-bottom:1px solid ${C.border};margin-bottom:2px">
+      <span></span><span style="color:${C.muted}">ALIMENTO <span style="color:${C.dim};font-style:italic">— por 100g</span></span>
+      <span style="text-align:right;color:${C.prot}">P</span><span style="text-align:right;color:${colorF}">F</span>
+      <span style="text-align:right;color:${colorC}">C</span><span style="text-align:right;color:${C.kcal}">KCAL</span></div>`;
+  items.forEach(it=>{
+    const sel=S.selected[it.n];
+    h+=`<div onclick="toggleFood('${esc(it.n)}')" style="display:grid;grid-template-columns:22px 1fr 34px 34px 34px 44px;padding:6px 0;border-bottom:1px solid #080d1a;opacity:${it.ok?1:0.4};align-items:center;cursor:pointer;background:${sel?"rgba(74,222,128,0.08)":"transparent"};border-left:${sel?"2px solid #4ade80":"2px solid transparent"};transition:background 0.15s">
+      <span style="font-size:11px;text-align:center;color:${sel?"#4ade80":"#334155"}">${sel?"✓":"○"}</span>
+      <div style="display:flex;align-items:center;gap:5px">
+        <span style="font-size:12px;color:${it.ok?C.text:C.muted}">${it.e} ${it.n}</span>
+        ${it.en?`<span style="font-size:7px;background:#0c2f2a;color:${C.prot};padding:1px 5px;border-radius:3px;letter-spacing:1px;flex-shrink:0">EN PLAN</span>`:""}
+        <span style="font-size:8px;color:${it.ok?"#64748b":"#f87171"};font-style:italic;margin-left:2px">${it.nota}</span></div>
+      <span style="text-align:right;font-size:11px;color:${C.prot};font-family:monospace">${it.p}</span>
+      <span style="text-align:right;font-size:11px;color:${colorF};font-family:monospace">${it.f}</span>
+      <span style="text-align:right;font-size:11px;color:${colorC};font-family:monospace">${it.c}</span>
+      <span style="text-align:right;font-size:11px;color:${it.ok?C.kcal:C.muted};font-family:monospace">${it.kcal}</span></div>`;
+  });
+  h+=`<div style="font-size:8px;color:${C.dimmer};margin-top:6px;font-style:italic">P = proteína · F = grasa · C = carbohidratos — todos en gramos</div></div>`;
+
+  // Copy bar
+  if(selNames.length>0){
+    h+=`<div style="margin-top:10px;background:#0c2a1c;border:1px solid #166534;border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <span style="font-size:11px;color:#4ade80">🛒 ${selNames.length} seleccionado${selNames.length>1?"s":""}</span>
+      <div style="display:flex;gap:6px">
+        <button onclick="copyList()" style="background:${S.copied?"#166534":"#15803d"};color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:11px;font-weight:600">${S.copied?"✓ Copiado!":"📋 Copiar lista"}</button>
+        <button onclick="clearSel()" style="background:transparent;color:#ef4444;border:1px solid #7f1d1d;border-radius:6px;padding:6px 10px;font-size:10px">Limpiar</button></div></div>`;
+  }
+
+  // Section notes
+  const notes={frutas:`<div style="margin-top:10px;background:#0d1a0d;border:1px solid #14532d;border-radius:8px;padding:10px 12px;font-size:10px;color:#4ade80;line-height:1.8">✅ Las primeras 13 frutas son aptas para fat loss. Ordenadas por calorías.<br>⚠ Banana y uvas: reservalas para días de mayor gasto (post-entreno intenso).</div>`,
+    verduras:`<div style="margin-top:10px;background:#0d1a0d;border:1px solid #14532d;border-radius:8px;padding:10px 12px;font-size:10px;color:#4ade80;line-height:1.8">✅ Todas las verduras de esta lista son de <strong>consumo libre</strong> — no hace falta pesarlas.<br>Son técnicamente carbohidratos, pero con tan pocas calorías que se pueden comer sin límite.</div>`,
+    grasas:`<div style="margin-top:10px;background:#1a1505;border:1px solid #fde04733;border-radius:8px;padding:10px 12px;font-size:10px;color:#fde047;line-height:1.8">⚠ Las grasas son el macro más denso calóricamente: <strong>9 kcal/g</strong> vs 4 kcal/g de P y C. Pesarlas siempre.</div>`,
+    carbos:`<div style="margin-top:10px;background:#130e25;border:1px solid #a78bfa33;border-radius:8px;padding:10px 12px;font-size:10px;color:#a78bfa;line-height:1.8">Los carbos son el macro más flexible del plan: se ajustan para llegar a la meta calórica una vez fijadas proteína y grasa.</div>`};
+  if(notes[S.sec]) h+=notes[S.sec];
+  return h;
+}
+
+// ─── RENDER: CALCULADORA ──────────────────────────────────────────────────────
+function renderCalculadora(){
+  const tdee=calcTDEE(S.peso,S.altura,S.edad,S.sexo,S.activ);
+  const delta={perdida:-300,mantenimiento:0,ganancia:300}[S.obj]||0;
+  const tKcal=tdee+delta, tProt=Math.round(S.peso*1.6), tFat=+(S.peso*0.55).toFixed(1);
+  const pK=tProt*4, fK=Math.round(tFat*9), cK=tKcal-pK-fK, tCarbs=Math.round(cK/4);
+
+  function slider(l,field,min,max,unit=""){
+    return `<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:10px;color:${C.muted};margin-bottom:4px"><span>${l}</span><span style="color:${C.text};font-family:monospace;font-weight:700">${S[field]}${unit}</span></div><input type="range" min="${min}" max="${max}" value="${S[field]}" oninput="updateCalc('${field}',+this.value)"></div>`;
+  }
+
+  let h=`<div style="display:flex;flex-direction:column;gap:16px">
+    <div style="background:${C.card};border-radius:10px;padding:14px">
+      <div style="font-size:9px;letter-spacing:2px;color:${C.dim};margin-bottom:14px">TUS DATOS</div>
+      ${slider("Peso","peso",40,130," kg")}${slider("Altura","altura",140,210," cm")}${slider("Edad","edad",15,80)}
+      <div style="margin-bottom:14px"><div style="font-size:10px;color:${C.muted};margin-bottom:8px">Sexo biológico</div><div style="display:flex;gap:6px">
+        ${[["M","Masculino"],["F","Femenino"]].map(([v,l])=>`<button onclick="updateCalc('sexo','${v}')" style="flex:1;padding:7px;font-size:11px;font-family:monospace;background:${S.sexo===v?C.prot:C.card2};color:${S.sexo===v?"#000":C.muted};border:1px solid ${S.sexo===v?C.prot:C.border};border-radius:6px;font-weight:700">${l}</button>`).join("")}</div></div>
+      <div style="margin-bottom:14px"><div style="font-size:10px;color:${C.muted};margin-bottom:8px">Nivel de actividad</div>
+        ${[["sedentario","Sedentario","Sin ejercicio"],["ligero","Ligero","1-3 días/semana"],["moderado","Moderado","3-5 días/semana"],["activo","Activo","6-7 días/semana"],["muyActivo","Muy activo","2x/día"]].map(([v,l,s])=>`<button onclick="updateCalc('activ','${v}')" style="width:100%;text-align:left;padding:7px 12px;margin-bottom:4px;font-size:10px;font-family:monospace;background:${S.activ===v?"#0c2340":C.card2};color:${S.activ===v?"#7dd3fc":C.muted};border:1px solid ${S.activ===v?"#0ea5e9":C.border};border-radius:6px">${l} <span style="color:${C.dim}">— ${s}</span></button>`).join("")}</div>
+      <div><div style="font-size:10px;color:${C.muted};margin-bottom:8px">Objetivo</div><div style="display:flex;gap:5px">
+        ${[["perdida","🔥 Pérdida"],["mantenimiento","⚖ Mantener"],["ganancia","💪 Ganancia"]].map(([v,l])=>`<button onclick="updateCalc('obj','${v}')" style="flex:1;padding:7px 4px;font-size:9px;font-family:monospace;background:${S.obj===v?"#f97316":C.card2};color:${S.obj===v?"#000":C.muted};border:1px solid ${S.obj===v?"#f97316":C.border};border-radius:6px;font-weight:${S.obj===v?700:400}">${l}</button>`).join("")}</div></div>
+    </div>`;
+
+  // Results
+  h+=`<div style="background:#0a1628;border:1px solid ${C.prot}22;border-radius:10px;padding:16px">
+    <div style="font-size:9px;letter-spacing:2px;color:${C.dim};margin-bottom:14px">MACROS CALCULADOS</div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid ${C.border}">
+      <div><div style="font-size:9px;color:${C.muted}">TDEE (mantenimiento)</div><div style="font-size:9px;color:${C.dim};margin-top:2px">Mifflin-St Jeor × factor actividad</div></div>
+      <div style="text-align:right"><span style="font-size:24px;font-weight:900;color:${C.text};font-family:monospace">${tdee}</span><span style="font-size:11px;color:${C.muted}"> kcal</span></div></div>
+    <div style="margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid ${C.border}"><div style="display:flex;justify-content:space-between;align-items:baseline">
+      <span style="font-size:9px;color:${C.muted}">CALORÍAS OBJETIVO (${delta>0?"+":""}${delta})</span>
+      <div><span style="font-size:22px;font-weight:900;color:#fbbf24;font-family:monospace">${tKcal}</span><span style="font-size:10px;color:${C.muted}"> kcal</span></div></div></div>`;
+  [{l:"PROTEÍNA",v:tProt,c:C.prot,d:`${S.peso}kg × 1.6 = ${tProt}g → ${pK} kcal`},
+   {l:"GRASA",v:tFat,c:C.fat,d:`${S.peso}kg × 0.55 → ${fK} kcal`},
+   {l:"CARBOHIDRATOS",v:tCarbs,c:C.carb,d:`${tKcal}−${pK}−${fK} = ${cK} kcal ÷ 4`}
+  ].forEach(({l,v,c,d})=>{h+=`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:9px;color:${C.muted};letter-spacing:1px">${l}</span><div><span style="font-size:20px;font-weight:900;color:${c};font-family:monospace">${v}</span><span style="font-size:10px;color:${C.dim}">g</span></div></div><div style="font-size:9px;color:${C.dimmer};margin-top:2px">${d}</div><div style="height:3px;background:${C.border};border-radius:2px;margin-top:4px"><div style="height:100%;width:${Math.min(100,v/3)}%;background:${c};border-radius:2px"></div></div></div>`});
+  h+=`<div style="margin-top:14px;background:${C.card};border-radius:8px;padding:10px 12px"><div style="font-size:9px;color:${C.dim};letter-spacing:1px;margin-bottom:8px">POR COMIDA (÷ 2)</div><div style="display:flex;gap:16px">${pill("PROT",Math.round(tProt/2),C.prot)}${pill("GRASA",+(tFat/2).toFixed(1),C.fat)}${pill("CARBOS",Math.round(tCarbs/2),C.carb)}${pill("KCAL",Math.round(tKcal/2),C.kcal,"")}</div></div></div></div>`;
+  return h;
+}
+
+// ─── RENDER PRINCIPAL ─────────────────────────────────────────────────────────
+function render(){
+  const content={comidas:renderComidas,semana:renderSemana,alimentos:renderAlimentos,calculadora:renderCalculadora};
+  document.getElementById("root").innerHTML=`<div class="wrap">${renderHeader()}${(content[S.tab]||renderSemana)()}</div>`;
+}
+
+// ─── ACCIONES GLOBALES ────────────────────────────────────────────────────────
+window.setTab=t=>{S.tab=t;S.openComida=null;S.openMeal=null;render()};
+window.toggleComida=id=>{S.openComida=S.openComida===id?null:id;render()};
+window.toggleMeal=k=>{S.openMeal=S.openMeal===k?null:k;render()};
+window.setSec=s=>{S.sec=s;render()};
+window.toggleFood=n=>{if(S.selected[n])delete S.selected[n];else S.selected[n]=true;render()};
+window.clearSel=()=>{S.selected={};render()};
+window.copyList=()=>{const t=Object.keys(S.selected).join("\n");const ta=document.createElement("textarea");ta.value=t;ta.style.cssText="position:fixed;left:-9999px;top:0";document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);S.copied=true;render();setTimeout(()=>{S.copied=false;render()},2000)};
+window.updateCalc=(f,v)=>{S[f]=v;render()};
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
