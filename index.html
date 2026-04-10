@@ -165,7 +165,18 @@ const VERDURAS_DB=[
 
 // ─── ESTADO ───────────────────────────────────────────────────────────────────
 const S={tab:"semana",openComida:null,openMeal:null,sec:"proteinas",selected:{},copied:false,
-  peso:73,altura:175,edad:32,sexo:"M",activ:"moderado",obj:"perdida"};
+  peso:73,altura:175,edad:32,sexo:"M",activ:"moderado",obj:"perdida",sortMode:"default"};
+
+// ─── ORDEN MANUAL (localStorage) ──────────────────────────────────────────────
+function getOrder(sec){const k="foodOrder_"+sec;const s=localStorage.getItem(k);if(s)try{return JSON.parse(s)}catch(e){}return null}
+function saveOrder(sec,order){localStorage.setItem("foodOrder_"+sec,JSON.stringify(order))}
+function getSortedItems(sec){
+  const raw=sec==="verduras"?VERDURAS_DB:ALIMENTOS_DB[sec]||[];
+  if(S.sortMode==="prot")return[...raw].sort((a,b)=>b.p-a.p);
+  if(S.sortMode==="kcal")return[...raw].sort((a,b)=>a.kcal-b.kcal);
+  if(S.sortMode==="manual"){const order=getOrder(sec);if(!order)return raw;const map={};raw.forEach(it=>map[it.n]=it);return order.map(n=>map[n]).filter(Boolean).concat(raw.filter(it=>!order.includes(it.n)))}
+  return raw;
+}
 
 // ─── UTILIDADES ───────────────────────────────────────────────────────────────
 function calc(items){let p=0,f=0,c=0,k=0;items.forEach(i=>{const d=DB[i.nombre];if(!d)return;const r=i.g/100;p+=d.p*r;f+=d.f*r;c+=d.c*r;k+=d.kcal*r});return{p:+p.toFixed(1),f:+f.toFixed(1),c:+c.toFixed(1),kcal:Math.round(k)}}
@@ -277,10 +288,11 @@ function renderSemana(){
 // ─── RENDER: ALIMENTOS ────────────────────────────────────────────────────────
 function renderAlimentos(){
   const secs=[["proteinas","🍗 Proteínas"],["carbos","🍚 Carbos"],["grasas","🥑 Grasas"],["frutas","🍓 Frutas"],["verduras","🥦 Verduras"]];
-  const items=S.sec==="verduras"?VERDURAS_DB:ALIMENTOS_DB[S.sec]||[];
+  const items=getSortedItems(S.sec);
   const colorC=S.sec==="frutas"?"#fb923c":S.sec==="verduras"?C.verdura:C.carb;
   const colorF=C.fat;
   const selNames=Object.keys(S.selected);
+  const isManual=S.sortMode==="manual";
 
   let h=`<div style="background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;padding:12px 14px;font-size:10px;color:#7dd3fc;margin-bottom:10px;line-height:1.9">
     Estos alimentos son el <strong>backbone</strong> de la dieta. Apuntá a que el 80% de tus calorías vengan de acá.<br>
@@ -291,15 +303,22 @@ function renderAlimentos(){
   secs.forEach(([id,l])=>{h+=`<button onclick="setSec('${id}')" style="background:${S.sec===id?C.card2:"transparent"};color:${S.sec===id?C.text:C.muted};border:${S.sec===id?"1px solid "+C.border:"1px solid transparent"};border-radius:7px;padding:6px 12px;font-size:10px;font-weight:${S.sec===id?700:400}">${l}</button>`});
   h+=`</div>`;
 
+  // Sort buttons
+  const sb=(id,l)=>`<button onclick="setSort('${id}')" style="background:${S.sortMode===id?"#0f172a":"transparent"};color:${S.sortMode===id?C.text:C.muted};border:${S.sortMode===id?"1px solid "+C.border:"1px solid transparent"};border-radius:5px;padding:4px 10px;font-size:9px">${l}</button>`;
+  h+=`<div style="display:flex;gap:4px;margin-bottom:8px;align-items:center"><span style="font-size:8px;color:${C.dim};letter-spacing:1px;margin-right:4px">ORDEN:</span>${sb("default","Original")}${sb("prot","Proteína ↓")}${sb("kcal","Kcal ↑")}${sb("manual","✏️ Mi orden")}</div>`;
+  if(isManual&&!getOrder(S.sec)){saveOrder(S.sec,items.map(it=>it.n))}
+
+  const gcols=isManual?"22px 1fr 34px 34px 34px 44px 36px":"22px 1fr 34px 34px 34px 44px";
   // Table
   h+=`<div style="background:${C.card};border-radius:10px;padding:12px 14px">
-    <div style="display:grid;grid-template-columns:22px 1fr 34px 34px 34px 44px;font-size:8px;letter-spacing:1px;color:${C.dim};padding:6px 0;border-bottom:1px solid ${C.border};margin-bottom:2px">
+    <div style="display:grid;grid-template-columns:${gcols};font-size:8px;letter-spacing:1px;color:${C.dim};padding:6px 0;border-bottom:1px solid ${C.border};margin-bottom:2px">
       <span></span><span style="color:${C.muted}">ALIMENTO <span style="color:${C.dim};font-style:italic">— por 100g</span></span>
       <span style="text-align:right;color:${C.prot}">P</span><span style="text-align:right;color:${colorF}">F</span>
-      <span style="text-align:right;color:${colorC}">C</span><span style="text-align:right;color:${C.kcal}">KCAL</span></div>`;
-  items.forEach(it=>{
+      <span style="text-align:right;color:${colorC}">C</span><span style="text-align:right;color:${C.kcal}">KCAL</span>${isManual?'<span></span>':''}</div>`;
+  items.forEach((it,idx)=>{
     const sel=S.selected[it.n];
-    h+=`<div onclick="toggleFood('${esc(it.n)}')" style="display:grid;grid-template-columns:22px 1fr 34px 34px 34px 44px;padding:6px 0;border-bottom:1px solid #080d1a;opacity:${it.ok?1:0.4};align-items:center;cursor:pointer;background:${sel?"rgba(74,222,128,0.08)":"transparent"};border-left:${sel?"2px solid #4ade80":"2px solid transparent"};transition:background 0.15s">
+    const arrows=isManual?`<span style="display:flex;flex-direction:column;gap:0;align-items:center"><button onclick="event.stopPropagation();moveFood('${esc(it.n)}',-1)" style="background:none;border:none;color:${idx===0?C.dimmer:C.muted};font-size:10px;padding:0;line-height:1;cursor:${idx===0?"default":"pointer"}">▲</button><button onclick="event.stopPropagation();moveFood('${esc(it.n)}',1)" style="background:none;border:none;color:${idx===items.length-1?C.dimmer:C.muted};font-size:10px;padding:0;line-height:1;cursor:${idx===items.length-1?"default":"pointer"}">▼</button></span>`:"";
+    h+=`<div onclick="toggleFood('${esc(it.n)}')" style="display:grid;grid-template-columns:${gcols};padding:6px 0;border-bottom:1px solid #080d1a;opacity:${it.ok?1:0.4};align-items:center;cursor:pointer;background:${sel?"rgba(74,222,128,0.08)":"transparent"};border-left:${sel?"2px solid #4ade80":"2px solid transparent"};transition:background 0.15s">
       <span style="font-size:11px;text-align:center;color:${sel?"#4ade80":"#334155"}">${sel?"✓":"○"}</span>
       <div style="display:flex;align-items:center;gap:5px">
         <span style="font-size:12px;color:${it.ok?C.text:C.muted}">${it.e} ${it.n}</span>
@@ -308,7 +327,7 @@ function renderAlimentos(){
       <span style="text-align:right;font-size:11px;color:${C.prot};font-family:monospace">${it.p}</span>
       <span style="text-align:right;font-size:11px;color:${colorF};font-family:monospace">${it.f}</span>
       <span style="text-align:right;font-size:11px;color:${colorC};font-family:monospace">${it.c}</span>
-      <span style="text-align:right;font-size:11px;color:${it.ok?C.kcal:C.muted};font-family:monospace">${it.kcal}</span></div>`;
+      <span style="text-align:right;font-size:11px;color:${it.ok?C.kcal:C.muted};font-family:monospace">${it.kcal}</span>${arrows}</div>`;
   });
   h+=`<div style="font-size:8px;color:${C.dimmer};margin-top:6px;font-style:italic">P = proteína · F = grasa · C = carbohidratos — todos en gramos</div></div>`;
 
@@ -385,6 +404,8 @@ window.toggleFood=n=>{if(S.selected[n])delete S.selected[n];else S.selected[n]=t
 window.clearSel=()=>{S.selected={};render()};
 window.copyList=()=>{const t=Object.keys(S.selected).join("\n");const ta=document.createElement("textarea");ta.value=t;ta.style.cssText="position:fixed;left:-9999px;top:0";document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);S.copied=true;render();setTimeout(()=>{S.copied=false;render()},2000)};
 window.updateCalc=(f,v)=>{S[f]=v;render()};
+window.setSort=m=>{S.sortMode=m;render()};
+window.moveFood=(name,dir)=>{const sec=S.sec;const items=getSortedItems(sec);const order=items.map(it=>it.n);const idx=order.indexOf(name);if(idx<0)return;const ni=idx+dir;if(ni<0||ni>=order.length)return;[order[idx],order[ni]]=[order[ni],order[idx]];saveOrder(sec,order);render()};
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 render();
